@@ -49,7 +49,25 @@ Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
 Các lệnh tái tạo lại toàn bộ kết quả từ repo sạch.
 
 ```bash
-[ĐIỀN]
+# Môi trường chính (Python >= 3.10)
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# CP2 — kiểm tra phép chiếu LiDAR -> ảnh (ảnh lưu ở results/figures/overlay_*.png)
+python -m starter.projection --data-root data/synthetic --frame 000000
+python -m starter.projection --data-root data/kitti_mini --frame 000011
+python -m starter.projection --data-root data/nuscenes_mini_subset --frame scene-0103_010
+
+# Môi trường detector (Python 3.10, GPU NVIDIA): torch 2.1.2+cu118, mmcv 2.1.0, mmdet 3.2.0, mmdet3d 1.4.0
+uv venv --python 3.10 .venv-det
+uv pip install --python .venv-det/bin/python torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
+uv pip install --python .venv-det/bin/python "numpy<2" mmengine==0.10.7 mmcv==2.1.0 mmdet==3.2.0 mmdet3d==1.4.0 \
+  --find-links https://download.openmmlab.com/mmcv/dist/cu118/torch2.1.0/index.html
+wget -P checkpoints https://download.openmmlab.com/mmdetection3d/v1.0.0_models/pointpillars/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth
+
+# CP2 — baseline PointPillars trên 20 frame kitti_mini -> results/preds_kitti.json + results/figures/bev/bev_*.png
+.venv-det/bin/python -m src.infer --data-root data/kitti_mini
+
 ```
 
 ## 6. Khai báo sử dụng AI
