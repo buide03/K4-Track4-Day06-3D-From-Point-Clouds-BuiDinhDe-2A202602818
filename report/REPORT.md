@@ -41,6 +41,31 @@ Latency (`results/latency.csv`, NVIDIA GeForce RTX 3050 Laptop GPU, AMD Ryzen 7 
 ![recall theo khoảng cách](../results/figures/recall_by_range.png)
 ![score histogram](../results/figures/score_hist.png)
 
+### Bonus B1 — PointPillars vs SECOND (cùng 20 frame, cùng quy tắc ghép, `score_thr` 0.3)
+
+`results/model_comparison.csv`, `..._occlusion.csv`, `..._latency.csv`. Latency đo **xen kẽ** 2 model trong cùng một tiến trình (20 frame × 20 lần mỗi model, bỏ lần đầu) để cùng điều kiện GPU.
+
+| Model | Recall | Precision | FP | Car · Ped · Cyc | Car > 40 m (n=15) | Occluded 2 (n=18) | p50 / p95 (ms) |
+|---|---|---|---|---|---|---|---|
+| PointPillars | 0.865 | 0.610 | 53 | 0.917 · 0.833 · 0.333 | 14/15 | 13/18 | 63.9 / 69.5 |
+| SECOND | 0.833 | 0.734 | 29 | 0.861 · 0.778 · 0.667 | 10/15 | 10/18 | 78.5 / 85.1 |
+
+*Ưu/nhược:* SECOND (voxel 5 cm + sparse conv 3D) cho ít FP hơn (29 so với 53) và precision cao hơn ở cả 3 ngưỡng (0.55/0.73/0.86 so với 0.47/0.61/0.82), bắt được 4/6 cyclist so với 2/6; nhưng chậm hơn ~23 % (p50 78.5 so với 63.9 ms). PointPillars (pillar 16 cm, CNN 2D) nhanh hơn và recall cao hơn. *Failure riêng:* PointPillars nhiều FP và bỏ sót cyclist; SECOND bỏ sót xe xa > 40 m (10/15) và xe bị che (10/18). Lưu ý: Cyclist chỉ có 6 GT, chênh 2 vật đã là 0.33 → chưa đủ để kết luận chắc.
+
+![model comparison](../results/figures/model_comparison.png)
+
+### Bonus B2 — stress test (PointPillars, `score_thr` 0.3, seed 0; `results/stress_test.csv`)
+
+| Suy giảm | Mức | Recall | Precision | Trung vị điểm LiDAR / GT |
+|---|---|---|---|---|
+| gốc | — | 0.865 | 0.610 | 138 |
+| random_dropout (keep_ratio) | 0.7 / 0.5 / 0.3 | 0.844 / 0.802 / 0.708 | 0.653 / 0.706 / 0.694 | 104 / 72 / 38 |
+| gaussian_noise (σ xyz) | 2 / 5 / 10 cm | 0.885 / 0.875 / 0.823 | 0.590 / 0.672 / 0.590 | 139 / 136 / 132 |
+
+Mất điểm làm recall giảm đều (còn 0.708 khi chỉ giữ 30 % điểm, trùng với fail_01: vật ít điểm bị bỏ sót). Nhiễu ≤ 5 cm gần như không ảnh hưởng (nhỏ hơn pillar 16 cm); 10 cm làm recall giảm còn 0.823. Biến động nhỏ không đơn điệu (vd. σ 2 cm recall 0.885) là do chỉ có 96 GT: chênh 2 vật = 0.02. Hàng "gốc" trùng đúng kết quả CP3 → stress test đo nhất quán với benchmark.
+
+![stress test](../results/figures/stress_test.png)
+
 ## 3. Failure case
 
 Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên hệ tới lớp nào trong 6 lớp debug: I/O, Geometry, Time, Preprocess, Model, Metric.
@@ -99,7 +124,28 @@ wget -P checkpoints https://download.openmmlab.com/mmdetection3d/v1.0.0_models/p
 
 # CP4 — failure: recall theo mức che khuất / số điểm, ảnh fail_01, fail_02
 .venv-det/bin/python -m src.failure
+
+# Bonus B1 — SECOND (cần spconv để nạp đúng trọng số sparse conv) + so sánh 2 model
+uv pip install --python .venv-det/bin/python spconv-cu118 "numpy<2"
+wget -P checkpoints https://download.openmmlab.com/mmdetection3d/v1.1.0_models/second/second_hv_secfpn_8xb6-80e_kitti-3d-3class/second_hv_secfpn_8xb6-80e_kitti-3d-3class-b086d0a3.pth
+.venv-det/bin/python -m src.infer --model second
+.venv-det/bin/python -m src.benchmark --preds results/preds_kitti_second.json --tag _second
+.venv-det/bin/python -m src.compare_models
+# Bonus B2 — stress test random_dropout / gaussian_noise
+.venv-det/bin/python -m src.stress
 ```
+
+**Bonus B4 — công cụ dùng lại được:** mọi script trong `src/` có tham số dòng lệnh và `--help` (`python -m src.<tên> --help`), đường dẫn mặc định tương đối từ gốc repo, đổi được dataset/model/ngưỡng:
+
+| Script | Việc | Tham số chính |
+|---|---|---|
+| `src/infer.py` | chạy detector, lưu JSON dự đoán + ảnh BEV | `--model {pointpillars,second}`, `--data-root`, `--frames`, `--vis-thr` |
+| `src/benchmark.py` | ghép dự đoán–GT, recall/precision theo lớp × khoảng cách × ngưỡng | `--preds`, `--thrs`, `--match-dist`, `--tag` |
+| `src/latency.py` | latency p50/p95 đúng cách (warm-up, synchronize) | `--model`, `--runs`, `--warmup`, `--frame` |
+| `src/failure.py` | recall theo mức che khuất / số điểm, ảnh failure | `--thr`, `--match-dist` |
+| `src/compare_models.py` | so sánh 2 model, latency đo xen kẽ | `--runs`, `--skip-latency` |
+| `src/stress.py` | stress test suy giảm point cloud | `--model`, `--thr`, `--seed` |
+| `src/boxes.py` | đổi box GT camera → LiDAR + tự kiểm | `--data-root`, `--frame`, `--margin` |
 
 ## 6. Khai báo sử dụng AI
 
@@ -111,4 +157,5 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 | Claude Code | Cài môi trường detector (torch 2.1.2+cu118, mmcv 2.1.0, mmdet3d 1.4.0), tải checkpoint PointPillars | `torch.cuda.is_available()` = True trên RTX 3050; chạy thử 1 frame, box khớp GT trên ảnh BEV |
 | Claude Code | Viết 2 hàm TODO trong `starter/projection.py` | Điểm (10,0,0) → z_cam 9.73, (u,v) = (614, 175) như CHECKPOINTS; NaN và điểm sau camera bị loại; overlay 3 dataset; % điểm box 3D rơi vào box 2D = 99.6 % (KITTI 000011), giảm còn 53.7 % khi lệch yaw 2° |
 | Claude Code | Viết `src/boxes.py`, `src/infer.py`, `src/benchmark.py`, `src/latency.py`, `src/failure.py` | 8 góc box đổi hệ khớp trong 2–4 cm; box GT chứa điểm LiDAR; xem tay ảnh BEV; chạy lại benchmark/failure ra CSV trùng MD5; xem tay từng GT bị bỏ sót → phát hiện và sửa lỗi lọc FOV (fail_02) |
+| Claude Code | Bonus: `src/compare_models.py`, `src/stress.py`, tham số `--model`/`--tag`; phát hiện checkpoint SECOND cần spconv (không có thì trọng số nạp sai, ra 0 box) | Chạy lại PointPillars sau khi sửa code → `preds_kitti.json` và CSV CP3 trùng từng byte; hàng "gốc" của stress test trùng kết quả CP3; stress test chạy 2 lần trùng MD5 |
 | Claude Code | Soạn nội dung REPORT (claim, evidence, failure, khuyến nghị) | Mọi con số đối chiếu với file CSV trong `results/`; claim nháp bị số liệu bác bỏ nên đã viết lại theo số đo |

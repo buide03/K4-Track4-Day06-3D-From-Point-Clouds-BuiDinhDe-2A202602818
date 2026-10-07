@@ -1,0 +1,4 @@
+score_thr,boxes_per_frame,boxes_in_fov_per_frame,n_gt,tp,fp,fn,recall,precision,recall_Pedestrian,recall_Cyclist,recall_Car
+0.1,12.5,7.5,96,83,68,13,0.865,0.55,0.778,0.833,0.889
+0.3,8.25,5.35,96,80,29,16,0.833,0.734,0.778,0.667,0.861
+0.5,5.7,4.15,96,73,12,23,0.76,0.859,0.778,0.5,0.778

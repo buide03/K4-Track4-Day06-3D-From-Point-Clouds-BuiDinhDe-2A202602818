@@ -10,6 +10,7 @@ Cách đo:
 
 Chạy từ gốc repo:
     .venv-det/bin/python -m src.latency
+    .venv-det/bin/python -m src.latency --model second   # -> results/latency_second.csv
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.infer import DEFAULT_CKPT, default_config
+from src.infer import MODELS, default_config
 from starter.datasets import list_frames, load_frame
 
 
@@ -51,19 +52,22 @@ def time_runs(model, points: np.ndarray, warmup: int, runs: int) -> list[float]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="CP3: latency p50/p95 của PointPillars trên GPU")
+    ap = argparse.ArgumentParser(description="CP3: latency p50/p95 của detector (PointPillars hoặc SECOND) trên GPU")
+    ap.add_argument("--model", choices=list(MODELS), default="pointpillars")
     ap.add_argument("--data-root", default="data/kitti_mini")
     ap.add_argument("--frame", default="000011", help="frame dùng cho chế độ lặp trên cùng 1 frame")
     ap.add_argument("--warmup", type=int, default=1, help="số lần chạy đầu bị bỏ")
     ap.add_argument("--runs", type=int, default=30, help="số lần đo (>= 20)")
     ap.add_argument("--config", default=None)
-    ap.add_argument("--checkpoint", default=DEFAULT_CKPT)
+    ap.add_argument("--checkpoint", default=None)
     ap.add_argument("--out-dir", default="results")
     args = ap.parse_args()
 
     from mmdet3d.apis import init_model
     torch.manual_seed(0); np.random.seed(0)
-    model = init_model(args.config or default_config(), args.checkpoint, device="cuda:0")
+    model = init_model(args.config or default_config(args.model), args.checkpoint or MODELS[args.model][1],
+                       device="cuda:0")
+    suffix = "" if args.model == "pointpillars" else f"_{args.model}"
     hw = {"gpu": torch.cuda.get_device_name(0), "cpu": cpu_name(), "torch": torch.__version__}
 
     def load(fid):
@@ -92,11 +96,11 @@ def main() -> None:
                   "p50_ms": round(float(np.percentile(ms, 50)), 2), "p95_ms": round(float(np.percentile(ms, 95)), 2),
                   "mean_ms": round(float(ms.mean()), 2), "max_ms": round(float(ms.max()), 2), **hw})
     out = Path(args.out_dir)
-    df.round(3).to_csv(out / "latency_runs.csv", index=False)
-    pd.DataFrame(summary).to_csv(out / "latency.csv", index=False)
+    df.round(3).to_csv(out / f"latency_runs{suffix}.csv", index=False)
+    pd.DataFrame(summary).to_csv(out / f"latency{suffix}.csv", index=False)
     print(pd.DataFrame(summary).drop(columns=["cpu", "torch"]).to_string(index=False))
     print(f"CPU: {hw['cpu']} | torch {hw['torch']}")
-    print(f"-> {out}/latency.csv, {out}/latency_runs.csv")
+    print(f"-> {out}/latency{suffix}.csv, {out}/latency_runs{suffix}.csv")
 
 
 if __name__ == "__main__":

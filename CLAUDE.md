@@ -12,7 +12,7 @@ Details live in README.md, TOPICS.md (§B), CHECKPOINTS.md, RUBRIC.md, SUBMISSIO
 
 ## Env
 - WSL2, RTX 3050 Laptop 4 GB.
-- `.venv` (Py 3.12): requirements.txt. `.venv-det` (Py 3.10, gitignored): torch 2.1.2+cu118, mmcv 2.1.0, mmdet 3.2.0, mmdet3d 1.4.0, numpy<2. Torch wheels cached in `~/wheels/`.
+- `.venv` (Py 3.12): requirements.txt. `.venv-det` (Py 3.10, gitignored): torch 2.1.2+cu118, mmcv 2.1.0, mmdet 3.2.0, mmdet3d 1.4.0, spconv-cu118 (needed for SECOND weights), numpy<2. Torch wheels cached in `~/wheels/`.
 - Model: PointPillars KITTI-3class. Config from the installed package: `<mmdet3d>/.mim/configs/pointpillars/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-3class.py`; checkpoint `checkpoints/hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class_20220301_150306-37dc2420.pth` (URL in that dir's metafile.yml). Label ids: 0 Pedestrian, 1 Cyclist, 2 Car.
 - KITTI GT only covers the camera FOV → restrict predictions to the FOV before counting FPs.
 
@@ -32,3 +32,4 @@ Details live in README.md, TOPICS.md (§B), CHECKPOINTS.md, RUBRIC.md, SUBMISSIO
 
 ## Open items
 - Repo name should be `BuiDinhDe-2A202602818-Track4-Day21` per SUBMISSION — confirm/rename.
+- Bonus B1/B2/B4 committed (see git log). After pushing, submit the new `git rev-parse HEAD` on LMS before 12:00 2026-10-08.

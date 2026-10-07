@@ -1,0 +1,7 @@
+model,score_thr,level,detected,n_gt,recall
+PointPillars,0.3,occluded 0-1,64,68,0.941
+PointPillars,0.3,occluded 2,13,18,0.722
+PointPillars,0.3,occluded 3,6,10,0.6
+SECOND,0.3,occluded 0-1,62,68,0.912
+SECOND,0.3,occluded 2,10,18,0.556
+SECOND,0.3,occluded 3,8,10,0.8

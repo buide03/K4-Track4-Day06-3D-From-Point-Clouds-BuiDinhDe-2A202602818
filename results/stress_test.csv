@@ -1,0 +1,8 @@
+perturbation,param,level,points_per_frame,median_points_per_gt,tp,fp,fn,recall,precision
+gốc,none,0.0,119318.45,137.5,83,53,13,0.865,0.61
+random_dropout,keep_ratio,0.7,83614.9,104.0,81,43,15,0.844,0.653
+random_dropout,keep_ratio,0.5,59840.75,71.5,77,32,19,0.802,0.706
+random_dropout,keep_ratio,0.3,35755.25,37.5,68,30,28,0.708,0.694
+gaussian_noise,sigma_xyz_m,0.02,119318.45,139.0,85,59,11,0.885,0.59
+gaussian_noise,sigma_xyz_m,0.05,119318.45,136.0,84,41,12,0.875,0.672
+gaussian_noise,sigma_xyz_m,0.1,119318.45,131.5,79,55,17,0.823,0.59

@@ -18,6 +18,7 @@ Quy tắc đánh giá (tự đặt, đơn giản hơn AP chính thức của KIT
 
 Chạy từ gốc repo:
     .venv-det/bin/python -m src.benchmark
+    .venv-det/bin/python -m src.benchmark --preds results/preds_kitti_second.json --tag _second
 """
 from __future__ import annotations
 
@@ -99,7 +100,9 @@ def main() -> None:
     ap.add_argument("--match-dist", type=float, default=2.0, help="khoảng cách tâm BEV tối đa để ghép (m)")
     ap.add_argument("--pass-thr", type=float, default=0.3, help="ngưỡng dùng cho bảng pass/fail từng frame")
     ap.add_argument("--out-dir", default="results")
+    ap.add_argument("--tag", default="", help="hậu tố tên file output, vd. _second")
     args = ap.parse_args()
+    t = args.tag
 
     preds = json.load(open(args.preds))["frames"]
     frames = sorted(preds)
@@ -139,9 +142,9 @@ def main() -> None:
     sweep = pd.DataFrame(sweep_rows).round(3)
     by_cls = pd.DataFrame(cls_rows).round(3)
     per_frame = pd.DataFrame(frame_rows)
-    sweep.to_csv(out / "score_thr_sweep.csv", index=False)
-    by_cls.to_csv(out / "recall_by_class_range.csv", index=False)
-    per_frame.to_csv(out / f"per_frame_pass_fail_thr{args.pass_thr}.csv", index=False)
+    sweep.to_csv(out / f"score_thr_sweep{t}.csv", index=False)
+    by_cls.to_csv(out / f"recall_by_class_range{t}.csv", index=False)
+    per_frame.to_csv(out / f"per_frame_pass_fail_thr{args.pass_thr}{t}.csv", index=False)
     print(sweep.to_string(index=False))
     print()
     print(by_cls.pivot_table(index=["class", "range"], columns="score_thr", values="recall").to_string())
@@ -159,7 +162,7 @@ def main() -> None:
            label="box dự đoán / frame (trong FOV)")
     a2.axhline(sweep["n_gt"][0] / len(frames), color="g", ls="--", label="GT / frame")
     a2.set_xlabel("score_thr"); a2.set_title("Số box mỗi frame"); a2.legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(fig_dir / "score_thr_sweep.png", dpi=120); plt.close(fig)
+    fig.tight_layout(); fig.savefig(fig_dir / f"score_thr_sweep{t}.png", dpi=120); plt.close(fig)
 
     # Hình 2: recall theo khoảng cách cho từng lớp, mỗi cột một score_thr
     fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=True)
@@ -174,7 +177,7 @@ def main() -> None:
         ax.set_xticks(np.arange(3) + w); ax.set_xticklabels([f"{b}\n(n={n})" for b, n in zip(bins, ns)])
         ax.set_title(f"Recall {cls} theo khoảng cách"); ax.set_ylim(0, 1.05); ax.grid(axis="y", alpha=.3)
     axes[0].set_ylabel("recall"); axes[0].legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(fig_dir / "recall_by_range.png", dpi=120); plt.close(fig)
+    fig.tight_layout(); fig.savefig(fig_dir / f"recall_by_range{t}.png", dpi=120); plt.close(fig)
 
     # Hình 3: histogram score của box đúng (TP) và sai (FP) ở ngưỡng thấp nhất
     tp_s, fp_s = scores_by_thr[min(args.thrs)]
@@ -186,9 +189,9 @@ def main() -> None:
         ax.axvline(thr, color="k", ls="--", lw=.8)
     ax.set_xlabel("score"); ax.set_ylabel("số box"); ax.legend()
     ax.set_title("Phân bố score: box đúng vs box sai (trong FOV)")
-    fig.tight_layout(); fig.savefig(fig_dir / "score_hist.png", dpi=120); plt.close(fig)
-    print(f"-> {out}/score_thr_sweep.csv, recall_by_class_range.csv, per_frame_pass_fail_thr{args.pass_thr}.csv, "
-          f"figures/score_thr_sweep.png, recall_by_range.png, score_hist.png")
+    fig.tight_layout(); fig.savefig(fig_dir / f"score_hist{t}.png", dpi=120); plt.close(fig)
+    print(f"-> {out}/score_thr_sweep{t}.csv, recall_by_class_range{t}.csv, per_frame_pass_fail_thr{args.pass_thr}{t}.csv, "
+          f"figures/score_thr_sweep{t}.png, recall_by_range{t}.png, score_hist{t}.png")
 
 
 if __name__ == "__main__":
