@@ -16,19 +16,30 @@
 
 Một câu khẳng định kỹ thuật có thể kiểm chứng. Ví dụ: *"Lệch yaw 1° làm 12% điểm LiDAR rơi ra khỏi vật thể ở 30 m, phát hiện được bằng edge-alignment score với ngưỡng X."*
 
-**Claim (nháp CP1, sẽ cập nhật theo số liệu CP3):** PointPillars (KITTI-3class, `score_thr = 0.3`) trên 20 frame kitti_mini đạt recall Car ≥ 80% với xe ở 0–20 m nhưng giảm xuống < 50% với xe xa hơn 40 m; recall Pedestrian thấp hơn Car ít nhất 20 điểm %; latency p95 < 50 ms trên RTX 3050 Laptop.
+**Claim:** Trên 20 frame kitti_mini, PointPillars KITTI-3class tăng `score_thr` từ 0.1 lên 0.5 làm precision tăng từ 0.47 lên 0.82 trong khi recall chỉ giảm từ 0.89 xuống 0.81; Cyclist là lớp chịu thiệt nhiều nhất (recall 0.67 → 0.33); latency p95 = 71 ms trên RTX 3050 Laptop.
 
-*Cách đo:* một box GT được tính là "trúng" nếu có box dự đoán cùng lớp có tâm BEV cách tâm GT ≤ 2 m. Recall chia theo 3 nhóm khoảng cách (0–20, 20–40, > 40 m) và 3 mức `score_thr` (0.1 / 0.3 / 0.5). Latency: bỏ lần chạy khởi động, ≥ 20 lần mỗi frame, báo p50/p95.
+*Cách đo:* GT được tính là "trúng" nếu có box dự đoán cùng lớp có tâm BEV cách tâm GT ≤ 2 m. Chỉ đánh giá 3 lớp model được train (Car, Pedestrian, Cyclist); box không ghép được chỉ tính FP khi nằm trong FOV camera (KITTI chỉ gán nhãn trong ảnh). Latency: bỏ lần chạy đầu, 30 lần mỗi frame, báo p50/p95.
+
+*Claim nháp ở CP1* ("recall Car < 50 % ở > 40 m, Pedestrian thấp hơn Car ≥ 20 điểm %, p95 < 50 ms") **bị số liệu CP3 bác bỏ**: recall Car > 40 m = 0.93 (n = 15), Pedestrian 0.83 so với Car 0.92, p95 = 70.6 ms.
 
 ## 2. Evidence
 
 Bảng hoặc plot số liệu, kèm ảnh/video demo. Ghi rõ đường dẫn file trong `results/`.
 
-| Cấu hình / mức perturb | Metric 1 | Metric 2 | Ghi chú |
-|---|---|---|---|
-| [ĐIỀN] | | | |
+PointPillars KITTI-3class, 20 frame kitti_mini, 96 GT (Car 72 · Ped 18 · Cyc 6). Chỉ đổi `score_thr`; ghép cùng lớp, tâm BEV ≤ 2 m (`results/score_thr_sweep.csv`, `results/recall_by_class_range.csv`).
 
-![demo](../results/figures/[ĐIỀN].png)
+| score_thr | Box/frame (trong FOV) | TP / FP / FN | Recall | Precision | Recall Car · Ped · Cyc | Recall Car > 40 m (n=15) |
+|---|---|---|---|---|---|---|
+| 0.1 | 8.95 | 85 / 95 / 11 | 0.885 | 0.472 | 0.917 · 0.833 · 0.667 | 0.933 |
+| 0.3 | 6.75 | 83 / 53 / 13 | 0.865 | 0.610 | 0.917 · 0.833 · 0.333 | 0.933 |
+| 0.5 | 4.60 | 78 / 17 / 18 | 0.812 | 0.821 | 0.861 · 0.778 · 0.333 | 0.733 |
+
+Latency (`results/latency.csv`, NVIDIA GeForce RTX 3050 Laptop GPU, AMD Ryzen 7 5800H, torch 2.1.2+cu118; bỏ 1 lần chạy đầu): cùng frame 000011, 30 lần → **p50 60.7 ms, p95 70.6 ms**; 20 frame × 30 lần → p50 63.5 ms, p95 68.8 ms. Pass/fail từng frame @ 0.3 (đủ GT, không FP): 4/20 (`results/per_frame_pass_fail_thr0.3.csv`).
+
+![bev demo](../results/figures/bev/bev_000004.png)
+![sweep](../results/figures/score_thr_sweep.png)
+![recall theo khoảng cách](../results/figures/recall_by_range.png)
+![score histogram](../results/figures/score_hist.png)
 
 ## 3. Failure case
 
@@ -68,6 +79,10 @@ wget -P checkpoints https://download.openmmlab.com/mmdetection3d/v1.0.0_models/p
 # CP2 — baseline PointPillars trên 20 frame kitti_mini -> results/preds_kitti.json + results/figures/bev/bev_*.png
 .venv-det/bin/python -m src.infer --data-root data/kitti_mini
 
+# CP3 — sweep score_thr 0.1/0.3/0.5 (đọc preds_kitti.json, không chạy lại model; kết quả lặp lại y hệt)
+.venv-det/bin/python -m src.benchmark
+# CP3 — latency p50/p95 (cần GPU; số ms dao động nhẹ giữa các lần chạy)
+.venv-det/bin/python -m src.latency
 ```
 
 ## 6. Khai báo sử dụng AI
