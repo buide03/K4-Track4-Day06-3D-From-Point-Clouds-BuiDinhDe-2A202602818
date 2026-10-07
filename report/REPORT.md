@@ -1,14 +1,14 @@
-# Báo cáo Day 6: [ĐIỀN tên đề tài ngắn]
+# Báo cáo Day 6: PointPillars trên KITTI mini — recall theo khoảng cách và latency
 
 > Thay **mọi** ô có chữ ĐIỀN nằm trong ngoặc vuông bằng nội dung của bạn, xoá luôn cả dấu ngoặc vuông. Lệnh `python tools/check_submission.py` sẽ báo FAIL nếu còn sót bất kỳ chỗ nào.
 
-- **Họ tên:** [ĐIỀN]
-- **MSSV:** [ĐIỀN] (phải trùng với MSSV trong tên repo `<HoVaTen>-<MSSV>-Track4-Day21`)
-- **Lớp:** [ĐIỀN]
-- **Link repo:** [ĐIỀN]
-- **Topic:** [ĐIỀN một chữ cái A/B/C/D/E/F] — [ĐIỀN tên topic]
-- **Dataset:** [ĐIỀN một hoặc nhiều trong: data/synthetic, data/kitti_mini, data/nuscenes_mini_subset, log riêng]
-- **Các frame đã dùng:** [ĐIỀN danh sách frame id, ví dụ 000011, 000049 hoặc scene-0103_010]
+- **Họ tên:** Bui Dinh De
+- **MSSV:** 2A202602818
+- **Lớp:** [H209-Track04]
+- **Link repo:** https://github.com/buide03/K4-Track4-Day06-3D-From-Point-Clouds-BuiDinhDe-2A202602818
+- **Topic:** B — Chạy baseline 3D detector (PointPillars KITTI-3class, MMDetection3D, checkpoint có sẵn)
+- **Dataset:** data/kitti_mini
+- **Các frame đã dùng:** cả 20 frame của kitti_mini: 000001, 000004, 000007, 000008, 000009, 000010, 000011, 000012, 000015, 000016, 000019, 000021, 000023, 000025, 000031, 000032, 000043, 000048, 000049, 000061
 
 > Hãy viết ngắn: mỗi mục từ 3 đến 8 dòng, ưu tiên số liệu và hình ảnh.
 
@@ -16,7 +16,9 @@
 
 Một câu khẳng định kỹ thuật có thể kiểm chứng. Ví dụ: *"Lệch yaw 1° làm 12% điểm LiDAR rơi ra khỏi vật thể ở 30 m, phát hiện được bằng edge-alignment score với ngưỡng X."*
 
-[ĐIỀN]
+**Claim (nháp CP1, sẽ cập nhật theo số liệu CP3):** PointPillars (KITTI-3class, `score_thr = 0.3`) trên 20 frame kitti_mini đạt recall Car ≥ 80% với xe ở 0–20 m nhưng giảm xuống < 50% với xe xa hơn 40 m; recall Pedestrian thấp hơn Car ít nhất 20 điểm %; latency p95 < 50 ms trên RTX 3050 Laptop.
+
+*Cách đo:* một box GT được tính là "trúng" nếu có box dự đoán cùng lớp có tâm BEV cách tâm GT ≤ 2 m. Recall chia theo 3 nhóm khoảng cách (0–20, 20–40, > 40 m) và 3 mức `score_thr` (0.1 / 0.3 / 0.5). Latency: bỏ lần chạy khởi động, ≥ 20 lần mỗi frame, báo p50/p95.
 
 ## 2. Evidence
 

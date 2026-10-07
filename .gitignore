@@ -23,3 +23,7 @@ secrets*.json
 *.engine
 *.bag
 *.db3
+
+# Detector env + checkpoints
+.venv-det/
+checkpoints/
