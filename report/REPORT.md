@@ -45,9 +45,15 @@ Latency (`results/latency.csv`, NVIDIA GeForce RTX 3050 Laptop GPU, AMD Ryzen 7 
 
 Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên hệ tới lớp nào trong 6 lớp debug: I/O, Geometry, Time, Preprocess, Model, Metric.
 
-![failure](../results/figures/fail_[ĐIỀN].png)
+**Fail 01 — xe bị che khuất bị bỏ sót (lớp Model, gốc ở Sensor/Data).** Frame 000049 @ `score_thr` 0.3: 5/16 GT bị bỏ sót, cả 5 là Car ở 22–33 m, đậu chéo phía sau xe gần và thân cây, `occluded` = 2–3, chỉ 20–140 điểm LiDAR; không có box nào (kể cả score 0.1) trong bán kính 4 m. Trên cả 20 frame (`results/failure_recall_by_occlusion.csv`, `..._by_points.csv`): recall 64/68 = 0.94 với vật không/ít bị che (occluded 0–1) nhưng chỉ 13/18 = 0.72 với occluded = 2; theo số điểm: < 50 điểm → 0.79, ≥ 200 điểm → 0.95.
 
-[ĐIỀN]
+![fail_01](../results/figures/fail_01_occluded_cars_000049.png)
+
+*Vì sao:* LiDAR chỉ thấy theo đường thẳng, vật phía sau bị "bóng" của vật trước che → còn vài hàng điểm của nóc/đuôi xe. PointPillars gom điểm thành pillar 16 cm rồi dự đoán bằng anchor; mẫu xe thiếu nửa thân, ít điểm, nằm chéo nhiều khả năng khác xa phần lớn mẫu xe lúc train → score của mọi box ở đó đều dưới ngưỡng 0.1 trong config (đã kiểm: không có box nào trong 4 m). *Phát hiện khi chạy thật:* (1) tracker giữ track của xe đang bị che thay vì xoá ngay khi detector mất box; (2) vùng "bóng" LiDAR trên BEV đánh dấu là *chưa biết* chứ không phải *trống*; (3) so với detector 2D trên camera (camera vẫn thấy các xe này) và log các trường hợp camera thấy mà LiDAR không.
+
+**Fail 02 — lỗi cách đo của chính bài làm (lớp Metric).** Bản đầu của `src/benchmark.py` bỏ box dự đoán có tâm ngoài FOV camera *trước khi* ghép. Xe Car 6.8 m ở frame 000011 bị cắt mép ảnh (`truncated` = 0.98): model đoán đúng (score 0.95, lệch tâm 0.07 m) nhưng tâm box nằm ngoài FOV → bị tính là bỏ sót. Recall Car 0–20 m bị báo 25/28 = 0.89 thay vì 28/28 = 1.00 (`results/failure_fov_filter.csv`). Đã sửa: ghép với mọi box, FOV chỉ dùng để quyết định có tính FP hay không. *Phòng tránh:* luôn chạy kiểm tra "dùng GT làm dự đoán phải ra recall 1.0" và xem tay các GT bị đánh dấu bỏ sót trước khi tin vào metric.
+
+![fail_02](../results/figures/fail_02_truncated_car_fov_filter_000011.png)
 
 ## 4. Khuyến nghị nếu triển khai thật
 
@@ -83,6 +89,9 @@ wget -P checkpoints https://download.openmmlab.com/mmdetection3d/v1.0.0_models/p
 .venv-det/bin/python -m src.benchmark
 # CP3 — latency p50/p95 (cần GPU; số ms dao động nhẹ giữa các lần chạy)
 .venv-det/bin/python -m src.latency
+
+# CP4 — failure: recall theo mức che khuất / số điểm, ảnh fail_01, fail_02
+.venv-det/bin/python -m src.failure
 ```
 
 ## 6. Khai báo sử dụng AI

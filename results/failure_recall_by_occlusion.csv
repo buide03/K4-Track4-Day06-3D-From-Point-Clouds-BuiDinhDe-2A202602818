@@ -1,0 +1,5 @@
+occluded,n_gt,detected,recall,median_points
+0 không che,53,49,0.925,174.0
+1 che một phần,15,15,1.0,372.0
+2 che phần lớn,18,13,0.722,46.5
+3 không rõ,10,6,0.6,492.5
