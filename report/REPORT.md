@@ -59,7 +59,14 @@ Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên h
 
 Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
 
-[ĐIỀN]
+**Use-case:** phát hiện xe/người/xe đạp phía trước cho ADAS trong đô thị (phanh khẩn cấp, giữ làn có xe đỗ hai bên như KITTI).
+
+- **Ngưỡng score:** 0.1 cho recall 0.885 nhưng precision 0.47 (95 FP/20 frame → nguy cơ phanh ảo); 0.5 còn 17 FP nhưng recall 0.812 và Cyclist chỉ 0.33. Khuyến nghị 0.3 (recall 0.865, precision 0.61) **kèm tracking** xác nhận qua 2–3 frame để lọc FP, và hạ ngưỡng ở vùng gần (< 20 m) cho Pedestrian/Cyclist vì bỏ sót người nguy hiểm hơn phanh nhầm.
+- **Tốc độ:** p95 = 70.6 ms trên RTX 3050 Laptop (≈ 14 FPS) — kịp LiDAR 10 Hz nhưng chỉ còn ~30 ms cho tracking/planning. Trên máy nhúng (Jetson…) chưa đo; cần benchmark lại hoặc dùng TensorRT/FP16 trước khi tin là realtime.
+- **Vùng phủ:** `point_cloud_range` chỉ 0–69 m phía trước, ±39.7 m ngang → không thấy phía sau và hai bên sát xe; cần model 360° hoặc cảm biến khác cho chuyển làn/lùi.
+- **Che khuất (fail_01):** recall 0.72 với vật bị che phần lớn → giữ track khi vật bị che, đánh dấu vùng bóng LiDAR là "chưa biết", kết hợp camera.
+- **Chỉ số cần log khi chạy thật:** latency p50/p95/max mỗi phút; số điểm LiDAR/frame và số điểm trong mỗi box dự đoán; số box và phân bố score theo lớp (phát hiện drift); số track bị mất khi đang bị che; số lần camera thấy vật mà LiDAR không; độ lệch timestamp LiDAR–camera.
+- **Bước tiếp theo:** so sánh với SECOND/CenterPoint trên cùng 20 frame (độ chính xác vs latency), và chạy lại trên nuScenes 32-beam (thưa hơn ~3 lần) để xem recall theo số điểm có giảm như dự đoán không.
 
 ## 5. Cách chạy lại
 
@@ -100,4 +107,8 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| [ĐIỀN] | | |
+| Claude Code (Claude Opus 5.5) | Đọc tài liệu lab, lập kế hoạch theo checkpoint, viết `CLAUDE.md` | Đối chiếu với README/CHECKPOINTS/RUBRIC gốc |
+| Claude Code | Cài môi trường detector (torch 2.1.2+cu118, mmcv 2.1.0, mmdet3d 1.4.0), tải checkpoint PointPillars | `torch.cuda.is_available()` = True trên RTX 3050; chạy thử 1 frame, box khớp GT trên ảnh BEV |
+| Claude Code | Viết 2 hàm TODO trong `starter/projection.py` | Điểm (10,0,0) → z_cam 9.73, (u,v) = (614, 175) như CHECKPOINTS; NaN và điểm sau camera bị loại; overlay 3 dataset; % điểm box 3D rơi vào box 2D = 99.6 % (KITTI 000011), giảm còn 53.7 % khi lệch yaw 2° |
+| Claude Code | Viết `src/boxes.py`, `src/infer.py`, `src/benchmark.py`, `src/latency.py`, `src/failure.py` | 8 góc box đổi hệ khớp trong 2–4 cm; box GT chứa điểm LiDAR; xem tay ảnh BEV; chạy lại benchmark/failure ra CSV trùng MD5; xem tay từng GT bị bỏ sót → phát hiện và sửa lỗi lọc FOV (fail_02) |
+| Claude Code | Soạn nội dung REPORT (claim, evidence, failure, khuyến nghị) | Mọi con số đối chiếu với file CSV trong `results/`; claim nháp bị số liệu bác bỏ nên đã viết lại theo số đo |
